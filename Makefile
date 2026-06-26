@@ -1,14 +1,2 @@
-CC     = gcc
-CFLAGS = -Wall -Wextra -std=c11 -g
-LIBS   = $(shell sdl2-config --cflags --libs)
-
-SRC = src/main.c src/chip8.c src/display.c
-OUT = chip8
-
-all: $(OUT)
-
-$(OUT): $(SRC)
-	$(CC) $(CFLAGS) $(SRC) $(LIBS) -o $(OUT)
-
-clean:
-	rm -f $(OUT)
+chip8: gameLoop.c chip8.c chip8.h
+	g++ gameLoop.c chip8.c -o chip8 -std=c++17 -Wall -Wextra -Werror -I./SDL3-3.4.10/x86_64-w64-mingw32/include/SDL3 -L./SDL3-3.4.10/x86_64-w64-mingw32/lib -lmingw32 -lSDL3main -lSDL3
