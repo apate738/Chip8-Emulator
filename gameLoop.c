@@ -297,6 +297,26 @@ void print_debug_info(const chip8_t *chip8){
             printf("Call subroutine at NNN (0x%04X).\n", chip8->inst.NNN);
             break;
         
+        case 0x03:
+            // 0x3NNN Check if VX == NN, if so, skip the next instruction
+            printf("Check if V%X (0x%02X) == NN (0x%02X), skip next instruction if true\n",
+            chip8->inst.X, chip8->V[chip8->inst.X], chip8->inst.NN);
+            break;
+        
+        case 0x04:
+            // 0x4NNN: Check if VX != NN, if so, skip the next instruction
+            printf("Check if V%X (0x%02X) != NN (0x%02X), skip next instruction if true\n",
+            chip8->inst.X, chip8->V[chip8->inst.X], chip8->inst.NN);
+            break;
+        
+        case 0x05:
+            // 0x5XY0: Check if VX == VY, if so, skip the next instruction
+            printf("Check if V%X (0x%02X) != V%X (0x%02X), skip next instruction if true\n",
+                chip8->inst.X, chip8->V[chip8->inst.X],
+                chip8->inst.Y, chip8->V[chip8->inst.Y]);
+            break;
+        
+
         case 0x06:
             //0x06XNN: Set VX to NN
             printf("Set register V%X to NN(0x%02X).\n",
@@ -311,6 +331,20 @@ void print_debug_info(const chip8_t *chip8){
                    chip8->inst.NN,
                    (uint8_t)(chip8->V[chip8->inst.X] + chip8->inst.NN));
             break;
+        
+        case 0x08:
+                
+            switch(chip8->inst.N){
+                case 0: 
+                    //0x08XY0: Set reg VX = VY
+                    printf("Set register V%X = V%X (0x%02X),",
+                    chip8->inst.X, chip8->inst.Y, chip8->V[chip8->inst.Y]);
+                    break;
+
+                default:
+                    break;  //Wrong opcode
+            }   
+       
         
         case 0x0A:
             // 0xANNN: Set index reg I to nNN
@@ -362,6 +396,8 @@ void emulate_instruction(chip8_t *chip8, const config_t *config){
                 //Return from subroutine
                 //Grab last address from subroutine stack
                 chip8->PC = *--chip8->stack_ptr;
+            } else{
+                //Unimplemented opcode
             }
             break;
         
@@ -375,7 +411,26 @@ void emulate_instruction(chip8_t *chip8, const config_t *config){
             *chip8->stack_ptr++ = chip8->PC;     //Store current address to return to on subroutine stack
             chip8->PC = chip8->inst.NNN;    //Set PC to next address to get the next opcode
             break;
-            
+        
+        case 0x03:
+            // 0x3NNN: Check if VX == NN, if so, skip the next instruction
+            if(chip8->V[chip8->inst.X] == chip8->inst.NN)
+                chip8->PC += 2; //Skip next opcode/instruction
+            break;
+        
+        case 0x04:
+            // 0x4NNN: Check if VX != NN, if so, skip the next instruction
+            if(chip8->V[chip8->inst.X] != chip8->inst.NN)
+                chip8->PC += 2;     //Skip next opcode / instruction
+            break;
+        
+        case 0x05:
+            // 0x5XY0: Check if VX == VY, if so, skip the next instruction
+            if(chip8->inst.N != 0) break; //Wrong opcode
+            if(chip8->V[chip8->inst.X] == chip8->V[chip8->inst.Y])
+                chip8->PC += 2;     //Skip next opcode / instruction
+            break;
+        
         case 0x06:
             //0x06XNN: Set VX to NN
             chip8->V[chip8->inst.X] = chip8->inst.NN;
@@ -385,6 +440,60 @@ void emulate_instruction(chip8_t *chip8, const config_t *config){
             //0x07XNN: Set register VX += NN
             chip8->V[chip8->inst.X] += chip8->inst.NN;
             break;
+        
+        case 0x08:
+            switch(chip8->inst.N){
+                case 0:
+                    //0x08XY0: Set reg VX = VY
+                    chip8->V[chip8->inst.X] = chip8->V[chip8->inst.Y];
+                    break;
+                case 1:
+                    //0x08XY1: Set reg VX |= VY
+                    chip8->V[chip8->inst.X] |= chip8->V[chip8->inst.Y];
+                    break;
+                case 2:
+                    //0x08XY2: Set reg VX &= VY
+                    chip8->V[chip8->inst.X] &= chip8->V[chip8->inst.Y];
+                    break;
+
+                case 3:
+                    //0x08XY3:Set reg VX ^= VY
+                    chip8->V[chip8->inst.X] ^= chip8->V[chip8->inst.Y];
+                    break;
+
+                case 4:
+                    //0x08XY4:Set reg VX += VY, set VF to 1 if carry
+                    if((uint16_t)(chip8->V[chip8->inst.X] + chip8->V[chip8->inst.Y]) > 255){
+                        chip8->V[0xF] = 1;
+                    }
+                    chip8->V[chip8->inst.X] += chip8->V[chip8->inst.Y];
+
+                    break;
+
+                case 5:
+                    //0x08XY5:Set reg VX -= VY, set VF to 1 if there is no carry (result is positive)
+                    if((uint16_t)(chip8->V[chip8->inst.X] < chip8->V[chip8->inst.Y])){
+                        chip8->V[0xF] = 1;
+                    }
+                    chip8->V[chip8->inst.X] -= chip8->V[chip8->inst.Y];
+                    break;
+                
+                case 6:
+                    //0x08XY6:  
+                    break;                  
+                
+                case 7:
+                    //0x08XY7
+                    break;
+                
+                case 0xE:
+                    //0x08XYE:
+                    break;
+
+                default:
+                    break;  //Wrong opcode
+            }
+            
 
         case 0x0A:
             // 0xANNN: Set index reg I to nNN
